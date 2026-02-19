@@ -5,55 +5,38 @@
   <title>NovaCircuit Login</title>
 </head>
 <body>
-  <h1>NovaCircuit 登入</h1>
-  <button id="loginBtn">使用 Google 登入</button>
-  <p id="status"></p>
 
-  <!-- Firebase SDK -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getAuth, GoogleAuthProvider, signInWithPopup } 
-      from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-    import { getFirestore, doc, setDoc } 
-      from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+<h2>NovaCircuit 登入</h2>
+<button onclick="login()">使用 Google 登入</button>
 
-    const firebaseConfig = {
-      apiKey: "你的APIKEY",
-      authDomain: "你的專案.firebaseapp.com",
-      projectId: "你的專案ID",
-      storageBucket: "你的專案.appspot.com",
-      messagingSenderId: "你的SenderID",
-      appId: "你的AppID"
-    };
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
+  const firebaseConfig = {
+    apiKey: "AIzaSyBiaT27TRKaWCVQRkJ8VnwbnvvDRS9vINM",
+    authDomain: "account-master-novacircuit.firebaseapp.com",
+    projectId: "account-master-novacircuit",
+    storageBucket: "account-master-novacircuit.firebasestorage.app",
+    messagingSenderId: "539774822914",
+    appId: "1:539774822914:web:531bee934e477fc319151b"
+  };
 
-    const provider = new GoogleAuthProvider();
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const provider = new GoogleAuthProvider();
 
-    document.getElementById("loginBtn").onclick = async () => {
-      try {
-        const result = await signInWithPopup(auth, provider);
-        const user = result.user;
+  window.login = function () {
+    signInWithPopup(auth, provider)
+      .then((result) => {
+        alert("登入成功：" + result.user.displayName);
+      })
+      .catch((error) => {
+        console.error(error);
+        alert("登入失敗");
+      });
+  };
+</script>
 
-        // 建立 NovaCircuit 帳號資料
-        await setDoc(doc(db, "users", user.uid), {
-          email: user.email,
-          nickname: user.displayName,
-          circuit: 0,
-          plan: "free",
-          createdAt: new Date()
-        }, { merge: true });
-
-        document.getElementById("status").innerText = 
-          "登入成功：" + user.displayName;
-
-      } catch (error) {
-        document.getElementById("status").innerText = 
-          "錯誤：" + error.message;
-      }
-    };
-  </script>
 </body>
 </html>

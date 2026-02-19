@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>NovaCircuit Login</title>
+</head>
+<body>
+  <h1>NovaCircuit 登入</h1>
+  <button id="loginBtn">使用 Google 登入</button>
+  <p id="status"></p>
+
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup } 
+      from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { getFirestore, doc, setDoc } 
+      from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "你的APIKEY",
+      authDomain: "你的專案.firebaseapp.com",
+      projectId: "你的專案ID",
+      storageBucket: "你的專案.appspot.com",
+      messagingSenderId: "你的SenderID",
+      appId: "你的AppID"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const provider = new GoogleAuthProvider();
+
+    document.getElementById("loginBtn").onclick = async () => {
+      try {
+        const result = await signInWithPopup(auth, provider);
+        const user = result.user;
+
+        // 建立 NovaCircuit 帳號資料
+        await setDoc(doc(db, "users", user.uid), {
+          email: user.email,
+          nickname: user.displayName,
+          circuit: 0,
+          plan: "free",
+          createdAt: new Date()
+        }, { merge: true });
+
+        document.getElementById("status").innerText = 
+          "登入成功：" + user.displayName;
+
+      } catch (error) {
+        document.getElementById("status").innerText = 
+          "錯誤：" + error.message;
+      }
+    };
+  </script>
+</body>
+</html>

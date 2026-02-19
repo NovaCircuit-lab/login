@@ -13,14 +13,14 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyBiaT27TRKaWCVQRkJ8VnwbnvvDRS9vINM",
-    authDomain: "account-master-novacircuit.firebaseapp.com",
-    projectId: "account-master-novacircuit",
-    storageBucket: "account-master-novacircuit.firebasestorage.app",
-    messagingSenderId: "539774822914",
-    appId: "1:539774822914:web:531bee934e477fc319151b"
-  };
+const firebaseConfig = {
+  apiKey: "AIzaSyBiaT27TRKaWCVQRkJ8VnwbnvvDRS9vINM",
+  authDomain: "account-master-novacircuit.firebaseapp.com",
+  projectId: "account-master-novacircuit",
+  storageBucket: "account-master-novacircuit.firebasestorage.app",
+  messagingSenderId: "539774822914",
+  appId: "1:539774822914:web:531bee934e477fc319151b"
+};
 
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);

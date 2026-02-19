@@ -1,16 +1,29 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>NovaCircuit 登入</title>
+</head>
+<body>
+
+<h2>NovaCircuit 登入</h2>
+<!-- 登入按鈕 -->
+<button onclick="login()">使用 Google 登入</button>
+<p id="status"></p>
+
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
   import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyBiaT27TRKaWCVQRkJ8VnwbnvvDRS9vINM",
-  authDomain: "account-master-novacircuit.firebaseapp.com",
-  projectId: "account-master-novacircuit",
-  storageBucket: "account-master-novacircuit.firebasestorage.app",
-  messagingSenderId: "539774822914",
-  appId: "1:539774822914:web:531bee934e477fc319151b"
-};
+  const firebaseConfig = {
+    apiKey: "AIzaSyBiaT27TRKaWCVQRkJ8VnwbnvvDRS9vINM",
+    authDomain: "account-master-novacircuit.firebaseapp.com",
+    projectId: "account-master-novacircuit",
+    storageBucket: "account-master-novacircuit.firebasestorage.app",
+    messagingSenderId: "539774822914",
+    appId: "1:539774822914:web:531bee934e477fc319151b"
+  };
 
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
@@ -18,6 +31,7 @@ const firebaseConfig = {
   const provider = new GoogleAuthProvider();
 
   window.login = async function () {
+    const statusEl = document.getElementById("status");
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
@@ -26,35 +40,26 @@ const firebaseConfig = {
       const userSnap = await getDoc(userRef);
 
       if (!userSnap.exists()) {
-        // 首次登入 → 建立初始資料
         await setDoc(userRef, {
           nickname: user.displayName || "未命名玩家",
           circuitCoin: 0,
           plan: "free",
           createdAt: new Date(),
-
           projects: {
-            rustSurvival: {
-              money: 0,
-              items: [],
-              guns: []
-            },
-            beacCrux: {
-              money: 0,
-              maps: [],
-              territory: 0
-            }
+            rustSurvival: { money: 0, items: [], guns: [] },
+            beacCrux: { money: 0, maps: [], territory: 0 }
           }
         });
-
-        alert("已建立 NovaCircuit 帳號！");
+        statusEl.innerText = "已建立 NovaCircuit 帳號！";
       } else {
-        alert("歡迎回來！");
+        statusEl.innerText = "歡迎回來，" + (user.displayName || "玩家") + "！";
       }
-
     } catch (error) {
       console.error(error);
-      alert("登入失敗");
+      statusEl.innerText = "登入失敗，請檢查控制台錯誤";
     }
   };
 </script>
+
+</body>
+</html>

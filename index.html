@@ -2,63 +2,106 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<title>NovaCircuit 登入</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>登入系統</title>
+<style>
+body{
+  font-family: Arial;
+  background:#0f172a;
+  color:white;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+}
+.box{
+  background:#1e293b;
+  padding:30px;
+  border-radius:12px;
+  width:300px;
+}
+input{
+  width:100%;
+  margin:8px 0;
+  padding:8px;
+  border-radius:6px;
+  border:none;
+}
+button{
+  width:100%;
+  padding:10px;
+  margin-top:10px;
+  border:none;
+  border-radius:6px;
+  background:#22c55e;
+  color:black;
+  font-weight:bold;
+  cursor:pointer;
+}
+#status{
+  margin-top:10px;
+  font-size:14px;
+}
+</style>
 </head>
 <body>
 
-<h2>NovaCircuit 登入</h2>
-<!-- 登入按鈕 -->
-<button onclick="login()">使用 Google 登入</button>
-<p id="status"></p>
+<div class="box">
+  <h2>登入</h2>
+  <input id="email" type="email" placeholder="Email">
+  <input id="password" type="password" placeholder="Password">
+  <button onclick="login()">登入</button>
+  <div id="status"></div>
+</div>
 
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.2.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.2.0/firebase-auth.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyBiaT27TRKaWCVQRkJ8VnwbnvvDRS9vINM",
-    authDomain: "account-master-novacircuit.firebaseapp.com",
-    projectId: "account-master-novacircuit",
-    storageBucket: "account-master-novacircuit.firebasestorage.app",
-    messagingSenderId: "539774822914",
-    appId: "1:539774822914:web:531bee934e477fc319151b"
-  };
+// 🔴 改成你自己的 Firebase 設定
+const firebaseConfig = {
+  apiKey: "你的APIKEY",
+  authDomain: "你的專案.firebaseapp.com",
+  projectId: "你的專案ID",
+};
 
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db = getFirestore(app);
-  const provider = new GoogleAuthProvider();
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
 
-  window.login = async function () {
-    const statusEl = document.getElementById("status");
-    try {
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
+window.login = async function(){
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+  const status = document.getElementById("status");
 
-      const userRef = doc(db, "users", user.uid);
-      const userSnap = await getDoc(userRef);
+  try{
+    status.innerText = "登入中...";
 
-      if (!userSnap.exists()) {
-        await setDoc(userRef, {
-          nickname: user.displayName || "未命名玩家",
-          circuitCoin: 0,
-          plan: "free",
-          createdAt: new Date(),
-          projects: {
-            rustSurvival: { money: 0, items: [], guns: [] },
-            beacCrux: { money: 0, maps: [], territory: 0 }
-          }
-        });
-        statusEl.innerText = "已建立 NovaCircuit 帳號！";
-      } else {
-        statusEl.innerText = "歡迎回來，" + (user.displayName || "玩家") + "！";
-      }
-    } catch (error) {
-      console.error(error);
-      statusEl.innerText = "登入失敗，請檢查控制台錯誤";
-    }
-  };
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+
+    // 取得 Firebase ID Token
+    const token = await userCredential.user.getIdToken();
+
+    status.innerText = "登入成功，建立連線中...";
+
+    // 建立 WebSocket 連線
+    const ws = new WebSocket(`wss://account-master.onrender.com/?token=${token}`);
+
+    ws.onopen = () => {
+      status.innerText = "已連線到伺服器 ✅";
+    };
+
+    ws.onmessage = (msg) => {
+      console.log("伺服器回覆:", msg.data);
+    };
+
+    ws.onerror = () => {
+      status.innerText = "WebSocket 連線錯誤";
+    };
+
+  }catch(err){
+    status.innerText = "登入失敗：" + err.message;
+  }
+}
 </script>
 
 </body>

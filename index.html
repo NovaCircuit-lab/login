@@ -3,156 +3,115 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>帳號系統</title>
+<title>Master Server 測試頁</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <style>
-body{
-  font-family: Arial;
-  background:#0f172a;
-  color:white;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  height:100vh;
-}
-.box{
-  background:#1e293b;
-  padding:30px;
-  border-radius:12px;
-  width:320px;
-}
-input{
-  width:100%;
-  margin:8px 0;
-  padding:8px;
-  border-radius:6px;
-  border:none;
-}
-button{
-  width:100%;
-  padding:10px;
-  margin-top:10px;
-  border:none;
-  border-radius:6px;
-  background:#22c55e;
-  color:black;
-  font-weight:bold;
-  cursor:pointer;
-}
-.switch{
-  margin-top:10px;
-  text-align:center;
-  font-size:14px;
-  cursor:pointer;
-  color:#38bdf8;
-}
-#status{
-  margin-top:10px;
-  font-size:14px;
-  min-height:20px;
-}
+body { font-family: monospace; padding: 20px; background: #1e1e1e; color: #cfcfcf; }
+input, button { margin: 5px 0; }
+#log { border: 1px solid #555; height: 300px; overflow-y: scroll; padding: 5px; margin-top: 10px; }
 </style>
 </head>
 <body>
 
-<div class="box">
-  <h2 id="title">登入</h2>
-  <input id="email" type="email" placeholder="Email">
-  <input id="password" type="password" placeholder="Password">
-  <button onclick="submitAction()">登入</button>
-  <div class="switch" onclick="toggleMode()">還沒有帳號？註冊</div>
-  <div id="status"></div>
+<h2>Master Server 測試頁</h2>
+
+<div>
+  <h3>Firebase 登入</h3>
+  <input type="email" id="email" placeholder="Email"><br>
+  <input type="password" id="password" placeholder="Password"><br>
+  <button onclick="login()">登入</button>
 </div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.2.0/firebase-app.js";
-import { 
-  getAuth, 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword,
-  sendEmailVerification,
-  onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/10.2.0/firebase-auth.js";
+<div>
+  <h3>WebSocket 指令</h3>
+  <button onclick="connectWS()">連線 WebSocket</button><br>
+  <button onclick="updateNickname()">更新暱稱</button><br>
+  <button onclick="redeemInvite()">兌換邀請碼</button><br>
+  <button onclick="earnCircuit()">發放 Circuit 幣</button>
+</div>
 
+<div id="log"></div>
+
+<script>
+// ====== Firebase 初始化 ======
 const firebaseConfig = {
-  apiKey: "你的APIKEY",
-  authDomain: "你的專案.firebaseapp.com",
-  projectId: "你的專案ID",
+  apiKey: "你的Firebase apiKey",
+  authDomain: "account-master-novacircuit.firebaseapp.com",
+  projectId: "account-master-novacircuit"
 };
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-
-let isLoginMode = true;
 let ws = null;
+let idToken = "";
 
-function connectWebSocket(token){
-  ws = new WebSocket(`wss://account-master.onrender.com/?token=${token}`);
-
-  ws.onopen = () => {
-    document.getElementById("status").innerText = "已登入並連線成功 ✅";
-  };
-
-  ws.onmessage = (msg) => {
-    console.log("伺服器回覆:", msg.data);
-  };
-
-  ws.onerror = () => {
-    document.getElementById("status").innerText = "WebSocket 連線錯誤";
-  };
+// ====== 日誌 ======
+function log(msg) {
+  const logDiv = document.getElementById("log");
+  logDiv.innerHTML += msg + "<br>";
+  logDiv.scrollTop = logDiv.scrollHeight;
 }
 
-window.toggleMode = function(){
-  isLoginMode = !isLoginMode;
-  document.getElementById("title").innerText = isLoginMode ? "登入" : "註冊";
-  document.querySelector("button").innerText = isLoginMode ? "登入" : "註冊";
-  document.querySelector(".switch").innerText = 
-    isLoginMode ? "還沒有帳號？註冊" : "已有帳號？登入";
-  document.getElementById("status").innerText = "";
+// ====== 登入 ======
+async function login() {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+  try {
+    const userCredential = await auth.signInWithEmailAndPassword(email, password);
+    idToken = await userCredential.user.getIdToken();
+    log(`登入成功: ${userCredential.user.uid}`);
+  } catch (err) {
+    log("登入失敗: " + err.message);
+  }
 }
 
-window.submitAction = async function(){
-  const email = document.getElementById("email").value.trim();
-  const password = document.getElementById("password").value.trim();
-  const status = document.getElementById("status");
-
-  if(password.length < 6){
-    status.innerText = "密碼至少 6 個字元";
+// ====== 連線 WebSocket ======
+function connectWS() {
+  if (!idToken) {
+    log("請先登入 Firebase");
     return;
   }
-
-  try{
-    let userCredential;
-
-    if(isLoginMode){
-      userCredential = await signInWithEmailAndPassword(auth, email, password);
-
-      if(!userCredential.user.emailVerified){
-        status.innerText = "請先驗證 Email 再登入";
-        return;
-      }
-
-    }else{
-      userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      await sendEmailVerification(userCredential.user);
-      status.innerText = "已寄出驗證信，請前往信箱驗證";
-      return;
-    }
-
-    const token = await userCredential.user.getIdToken(true);
-    connectWebSocket(token);
-
-  }catch(err){
-    status.innerText = "錯誤：" + err.message;
-  }
+  ws = new WebSocket(`wss://account-master.onrender.com/?token=${idToken}`);
+  ws.onopen = () => log("WebSocket 已連線");
+  ws.onmessage = (msg) => {
+    log("收到訊息: " + msg.data);
+  };
+  ws.onerror = (err) => log("WebSocket 錯誤: " + err.message);
+  ws.onclose = () => log("WebSocket 已關閉");
 }
 
-// 🔥 自動登入保持
-onAuthStateChanged(auth, async (user) => {
-  if(user && user.emailVerified){
-    const token = await user.getIdToken(true);
-    connectWebSocket(token);
+// ====== 指令封裝 ======
+function sendCommand(action, payload) {
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    log("WebSocket 尚未連線");
+    return;
   }
-});
+  ws.send(JSON.stringify({ action, ...payload }));
+}
+
+// ====== 前端操作 ======
+function updateNickname() {
+  const nickname = prompt("輸入新的暱稱:");
+  sendCommand("updateProjectData", {
+    projectId: "gameA",
+    payload: { nickname }
+  });
+}
+
+function redeemInvite() {
+  const code = prompt("輸入邀請碼:");
+  sendCommand("redeemInvite", { code });
+}
+
+function earnCircuit() {
+  const amount = parseInt(prompt("輸入發放 Circuit 數量:"));
+  sendCommand("earnCircuit", {
+    projectId: "gameA",
+    amount,
+    source: "manual_test"
+  });
+}
 </script>
 
 </body>

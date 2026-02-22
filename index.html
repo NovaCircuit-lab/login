@@ -20,9 +20,6 @@ body{
   border-radius:12px;
   width:320px;
 }
-h2{
-  text-align:center;
-}
 input{
   width:100%;
   margin:8px 0;
@@ -71,22 +68,38 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.2.0/firebas
 import { 
   getAuth, 
   signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword 
+  createUserWithEmailAndPassword,
+  sendEmailVerification,
+  onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.2.0/firebase-auth.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBiaT27TRKaWCVQRkJ8VnwbnvvDRS9vINM",
-  authDomain: "account-master-novacircuit.firebaseapp.com",
-  projectId: "account-master-novacircuit",
-  storageBucket: "account-master-novacircuit.firebasestorage.app",
-  messagingSenderId: "539774822914",
-  appId: "1:539774822914:web:531bee934e477fc319151b"
+  apiKey: "你的APIKEY",
+  authDomain: "你的專案.firebaseapp.com",
+  projectId: "你的專案ID",
 };
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
 let isLoginMode = true;
+let ws = null;
+
+function connectWebSocket(token){
+  ws = new WebSocket(`wss://account-master.onrender.com/?token=${token}`);
+
+  ws.onopen = () => {
+    document.getElementById("status").innerText = "已登入並連線成功 ✅";
+  };
+
+  ws.onmessage = (msg) => {
+    console.log("伺服器回覆:", msg.data);
+  };
+
+  ws.onerror = () => {
+    document.getElementById("status").innerText = "WebSocket 連線錯誤";
+  };
+}
 
 window.toggleMode = function(){
   isLoginMode = !isLoginMode;
@@ -108,38 +121,38 @@ window.submitAction = async function(){
   }
 
   try{
-    status.innerText = isLoginMode ? "登入中..." : "註冊中...";
-
     let userCredential;
 
     if(isLoginMode){
       userCredential = await signInWithEmailAndPassword(auth, email, password);
+
+      if(!userCredential.user.emailVerified){
+        status.innerText = "請先驗證 Email 再登入";
+        return;
+      }
+
     }else{
       userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      await sendEmailVerification(userCredential.user);
+      status.innerText = "已寄出驗證信，請前往信箱驗證";
+      return;
     }
 
-    const token = await userCredential.user.getIdToken();
-
-    status.innerText = "成功，連線伺服器中...";
-
-    const ws = new WebSocket(`wss://account-master.onrender.com/?token=${token}`);
-
-    ws.onopen = () => {
-      status.innerText = "已登入並連線成功 ✅";
-    };
-
-    ws.onmessage = (msg) => {
-      console.log("伺服器回覆:", msg.data);
-    };
-
-    ws.onerror = () => {
-      status.innerText = "WebSocket 連線錯誤";
-    };
+    const token = await userCredential.user.getIdToken(true);
+    connectWebSocket(token);
 
   }catch(err){
     status.innerText = "錯誤：" + err.message;
   }
 }
+
+// 🔥 自動登入保持
+onAuthStateChanged(auth, async (user) => {
+  if(user && user.emailVerified){
+    const token = await user.getIdToken(true);
+    connectWebSocket(token);
+  }
+});
 </script>
 
 </body>

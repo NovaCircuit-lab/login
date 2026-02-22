@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>登入系統</title>
+<title>帳號系統</title>
 <style>
 body{
   font-family: Arial;
@@ -18,7 +18,10 @@ body{
   background:#1e293b;
   padding:30px;
   border-radius:12px;
-  width:300px;
+  width:320px;
+}
+h2{
+  text-align:center;
 }
 input{
   width:100%;
@@ -38,26 +41,38 @@ button{
   font-weight:bold;
   cursor:pointer;
 }
+.switch{
+  margin-top:10px;
+  text-align:center;
+  font-size:14px;
+  cursor:pointer;
+  color:#38bdf8;
+}
 #status{
   margin-top:10px;
   font-size:14px;
+  min-height:20px;
 }
 </style>
 </head>
 <body>
 
 <div class="box">
-  <h2>登入</h2>
+  <h2 id="title">登入</h2>
   <input id="email" type="email" placeholder="Email">
   <input id="password" type="password" placeholder="Password">
-  <button onclick="login()">登入</button>
+  <button onclick="submitAction()">登入</button>
+  <div class="switch" onclick="toggleMode()">還沒有帳號？註冊</div>
   <div id="status"></div>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.2.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.2.0/firebase-auth.js";
-
+import { 
+  getAuth, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword 
+} from "https://www.gstatic.com/firebasejs/10.2.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBiaT27TRKaWCVQRkJ8VnwbnvvDRS9vINM",
@@ -71,26 +86,46 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
-window.login = async function(){
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
+let isLoginMode = true;
+
+window.toggleMode = function(){
+  isLoginMode = !isLoginMode;
+  document.getElementById("title").innerText = isLoginMode ? "登入" : "註冊";
+  document.querySelector("button").innerText = isLoginMode ? "登入" : "註冊";
+  document.querySelector(".switch").innerText = 
+    isLoginMode ? "還沒有帳號？註冊" : "已有帳號？登入";
+  document.getElementById("status").innerText = "";
+}
+
+window.submitAction = async function(){
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value.trim();
   const status = document.getElementById("status");
 
+  if(password.length < 6){
+    status.innerText = "密碼至少 6 個字元";
+    return;
+  }
+
   try{
-    status.innerText = "登入中...";
+    status.innerText = isLoginMode ? "登入中..." : "註冊中...";
 
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    let userCredential;
 
-    // 取得 Firebase ID Token
+    if(isLoginMode){
+      userCredential = await signInWithEmailAndPassword(auth, email, password);
+    }else{
+      userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    }
+
     const token = await userCredential.user.getIdToken();
 
-    status.innerText = "登入成功，建立連線中...";
+    status.innerText = "成功，連線伺服器中...";
 
-    // 建立 WebSocket 連線
     const ws = new WebSocket(`wss://account-master.onrender.com/?token=${token}`);
 
     ws.onopen = () => {
-      status.innerText = "已連線到伺服器 ✅";
+      status.innerText = "已登入並連線成功 ✅";
     };
 
     ws.onmessage = (msg) => {
@@ -102,7 +137,7 @@ window.login = async function(){
     };
 
   }catch(err){
-    status.innerText = "登入失敗：" + err.message;
+    status.innerText = "錯誤：" + err.message;
   }
 }
 </script>
